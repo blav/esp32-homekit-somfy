@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.16.0)
+list(APPEND EXTRA_COMPONENT_DIRS "/Users/dbr/dev/perso/platorm.io/lib/esp-homekit-sdk/components/homekit")
+list(APPEND EXTRA_COMPONENT_DIRS "/Users/dbr/dev/perso/platorm.io/lib/esp-homekit-sdk/examples/common")
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(homekit)
