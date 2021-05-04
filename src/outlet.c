@@ -11,7 +11,7 @@
 
 static const char* TAG = "Outlet";
 
-#define SOMFY_GPIO GPIO_NUM_2
+#define SOMFY_GPIO GPIO_NUM_12
 
 static pulse_ctl_handle_t ctl;
 
@@ -29,8 +29,7 @@ void outlet_init() {
 void outlet_set_state(bool state) {
   somfy_command_t command = {
     .button = state ? BUTTON_UP : BUTTON_DOWN,
-    .remote = 0x10000,
-    .rolling_code = 15
+    .remote = 0x100000,
   };
 
   somfy_command_send(ctl, &command);

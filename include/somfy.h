@@ -17,7 +17,6 @@ typedef enum {
 
 typedef struct {
   somfy_remote_t remote;
-  somfy_rolling_code_t rolling_code;
   somfy_button_t button;
 } somfy_command_t;
 
