@@ -1,0 +1,36 @@
+{
+	"folders": [
+		{
+			"path": "../../.."
+		},
+		{
+			"name": "wifi",
+			"path": "../../wifi"
+		},
+		{
+			"name": "homekit",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"hap.h": "c",
+			"app_wifi.h": "c",
+			"ledc.h": "c",
+			"ledc_types.h": "c",
+			"queue.h": "c",
+			"stdio.h": "c",
+			"_ansi.h": "c",
+			"list.h": "c",
+			"queue": "c",
+			"*.ipp": "c",
+			"semphr.h": "c",
+			"esp_err.h": "c",
+			"task.h": "c",
+			"rtc_io.h": "c",
+			"gpio.h": "c",
+			"esp_intr_alloc.h": "c",
+			"gpio_types.h": "c"
+		}
+	}
+}
