@@ -11,45 +11,49 @@
 #include "pulse.h"
 #include "buttons.h"
 
-static const char* TAG = "Outlet";
+static const char* TAG = "outlet";
 
 #define SOMFY_GPIO GPIO_NUM_12
 #define BUTTON_GPIO GPIO_NUM_14
 
-static pulse_ctl_handle_t ctl;
+static somfy_ctl_handle_t ctl;
 static buttons_ctl_handle_t buttons_ctl;
+static somfy_config_handle_t config;
 
 void button_pressed (button_event_t* event);
 
 void outlet_init() {
-  pulse_ctl_config_t cfg = {
+  
+  somfy_config_blob_handle_t blob;
+  if (somfy_config_blob_nvs_read(&blob) == ESP_OK) {
+    ESP_LOGI(TAG, "Found somfy config.");
+    somfy_config_deserialize(blob, &config);
+  } else {
+    ESP_LOGI(TAG, "No somfy config found. Creating a new one.");
+    somfy_config_new(&config);
+    somfy_config_remote_t * remote1;
+    somfy_config_remote_new("Bureau", 0x100000, 116, &remote1);
+
+    somfy_config_add_remote (config, remote1);
+    somfy_config_serialize (config, &blob);
+    somfy_config_blob_nvs_write (blob);
+  }
+
+  ESP_LOGI(TAG, "config %x loaded", (unsigned int) config);
+
+  somfy_config_blob_http_write (blob, "http://blav.ngrok.io/config");
+  somfy_config_blob_free (blob);
+  ESP_LOGI(TAG, "config sent");
+
+  pulse_ctl_config_t pulse_cfg = {
     .gpio = SOMFY_GPIO,
     .timer_group = TIMER_GROUP_0,
     .timer_idx = TIMER_0,
     .max_queue_size = 3
   };
 
-  ctl = pulse_ctl_new (&cfg); 
+  somfy_ctl_init (config, &pulse_cfg, &ctl); 
 
-  somfy_remote_config_t remote2 = {
-    .remote = 0x123457,
-    .remote_name = "name 2",
-    .rolling_code = 43,
-    .next = NULL,
-  };
-
-  somfy_remote_config_t remote1 = {
-    .remote = 0x123456,
-    .remote_name = "name 1",
-    .rolling_code = 42,
-    .next = &remote2,
-  };
-
-  somfy_config_t config = {
-    .remotes = &remote1,
-  };
-
-  somfy_config_save(&config, "http://blav.ngrok.io/config");
 
 /*
   gpio_install_isr_service(0);
@@ -72,7 +76,12 @@ void outlet_set_state(bool state) {
     .remote = 0x100000,
   };
 
-  somfy_command_send(ctl, &command);
+  somfy_config_blob_handle_t blob;
+  somfy_config_serialize(config,&blob);
+  somfy_config_blob_http_write(blob, "http://blav.ngrok.io/config");
+  somfy_config_blob_free(blob);
+  somfy_ctl_send_command(ctl, &command);
+  
 }
 
 void button_pressed (button_event_t* event) {
@@ -93,7 +102,7 @@ void outlet_set_state(bool state) {
     .button = BUTTON_UP
   };
 
-  somfy_command_send (&command, SOMFY_GPIO);
+  somfy_ctl_send_command (&command, SOMFY_GPIO);
   ESP_LOGI(TAG, "Somfy command sent.");
 }
 */

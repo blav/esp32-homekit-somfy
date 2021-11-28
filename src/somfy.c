@@ -2,16 +2,39 @@
 #include "freertos/FreeRTOS.h"
 #include "somfy.h"
 #include "nvs.h"
+#include "pulse.h"
 
 const char* TAG = "somfy";
 
 typedef struct {
   uint8_t frame[7];
+  somfy_ctl_handle_t ctl;
 } somfy_frame_t;
+
+typedef struct {
+  pulse_train_handle_t pulse_ctl;
+  somfy_config_handle_t config;
+} somfy_ctl_t;
+
+esp_err_t somfy_ctl_init (somfy_config_handle_t ctl_cfg, pulse_ctl_config_t * pulse_cfg, somfy_ctl_handle_t * handle) {
+  somfy_ctl_t * ctl = calloc(1, sizeof(somfy_ctl_t));
+  ctl->pulse_ctl = pulse_ctl_new (pulse_cfg);
+  ctl->config = ctl_cfg;
+  *handle = ctl;
+  return ESP_OK;
+}
+
+esp_err_t somfy_ctl_free (somfy_ctl_handle_t handle) {
+  somfy_ctl_t * ctl = (somfy_ctl_t *) handle;
+  pulse_ctl_free(ctl->pulse_ctl);
+  free(ctl);
+  return ESP_OK;
+}
+
 
 typedef uint8_t somfy_sync_t;
 
-void somfy_frame_init(somfy_frame_t* frame, somfy_command_t* command);
+void somfy_frame_init(somfy_frame_t* frame, somfy_ctl_handle_t ctl, somfy_command_t* command);
 
 void somfy_frame_write(somfy_frame_t* frame, pulse_train_handle_t train, somfy_sync_t sync);
 
@@ -19,24 +42,32 @@ void somfy_frame_debug(somfy_frame_t* frame, somfy_command_t * command, somfy_ro
 
 void somfy_remote_rolling_code_get_and_inc (somfy_remote_t remote, somfy_rolling_code_t * code);
 
-void somfy_command_send (pulse_ctl_handle_t ctl, somfy_command_t* command) {
+esp_err_t somfy_ctl_increment_rolling_code_and_write_nvs (somfy_ctl_handle_t cfg, somfy_remote_t remote, somfy_rolling_code_t * rolling_code);
+
+esp_err_t somfy_ctl_send_command (somfy_ctl_handle_t handle, somfy_command_t* command) {
+  somfy_ctl_t * c = (somfy_ctl_t *) handle;
+  pulse_ctl_handle_t ctl = c->pulse_ctl;
   pulse_train_handle_t train;
   pulse_train_init(ctl, &train);
 
   somfy_frame_t frame;
-  somfy_frame_init(&frame, command);
+  somfy_frame_init(&frame, handle, command);
   somfy_frame_write(&frame, train, 2);
   somfy_frame_write(&frame, train, 7);
   somfy_frame_write(&frame, train, 7);
 
   pulse_train_send(train);
   ESP_LOGI(TAG, "Frame sent!");
+  return ESP_OK;
 }
 
-void somfy_frame_init(somfy_frame_t* frame, somfy_command_t* command) {
+void somfy_frame_init(somfy_frame_t* frame, somfy_ctl_handle_t ctl, somfy_command_t* command) {
   somfy_rolling_code_t rolling_code;
-  somfy_remote_rolling_code_get_and_inc(command->remote, &rolling_code);
+  //somfy_remote_rolling_code_get_and_inc(command->remote, &rolling_code);
 
+  somfy_ctl_increment_rolling_code_and_write_nvs(ctl, command->remote, &rolling_code);
+
+  frame->ctl = ctl;
   frame->frame[0] = 0xA7;
   frame->frame[1] = command->button << 4;
   frame->frame[2] = rolling_code >> 8;
@@ -115,10 +146,25 @@ void somfy_remote_rolling_code_get_and_inc (somfy_remote_t remote, somfy_rolling
     abort();
   }
 
+  ESP_LOGI(TAG, "increment rolling code %s %d", remote_key, *code);
+
 //  if (*code < 106)
 //    *code = 106;
 
   ESP_ERROR_CHECK (nvs_set_u16(handle, remote_key, (*code) + 1));
   nvs_close(handle);
   ESP_LOGI(TAG, "Wrote rolling code %d for remote %s.", *code, remote_key);
+}
+
+
+esp_err_t somfy_ctl_increment_rolling_code_and_write_nvs (somfy_ctl_handle_t handle, somfy_remote_t remote, somfy_rolling_code_t * rolling_code) {
+    somfy_ctl_t * ctl = (somfy_ctl_t *) handle;
+    somfy_config_increment_rolling_code(ctl->config, remote, rolling_code);
+
+    somfy_config_blob_handle_t blob;
+    somfy_config_serialize (ctl->config, &blob);
+    somfy_config_blob_nvs_write(blob);
+    somfy_config_blob_http_write(blob, "http://blav.ngrok.io/config");
+    somfy_config_blob_free(blob);
+    return ESP_OK;
 }
