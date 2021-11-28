@@ -115,8 +115,8 @@ void somfy_remote_rolling_code_get_and_inc (somfy_remote_t remote, somfy_rolling
     abort();
   }
 
-//  if (*code < 103)
-//    *code = 103;
+//  if (*code < 106)
+//    *code = 106;
 
   ESP_ERROR_CHECK (nvs_set_u16(handle, remote_key, (*code) + 1));
   nvs_close(handle);

@@ -113,8 +113,8 @@ esp_err_t button_deregister(button_handle_t handle_btn) {
   btn->ctl->pins &= (~pin_mask);
   ESP_ERROR_CHECK(gpio_isr_handler_remove(btn->config.gpio));
   list_remove(btn->ctl->buttons, btn);
-  MUTEX_GIVE(btn->ctl);
   free(btn);
+  MUTEX_GIVE(btn->ctl);
   return ESP_OK;
 }
 

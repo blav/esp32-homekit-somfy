@@ -1,0 +1,4 @@
+UseTab: false
+IndentWidth: 2
+BreakBeforeBraces: false
+AllowShortIfStatementsOnASingleLine: false

@@ -200,6 +200,8 @@ static void smart_outlet_thread_entry(void* p)
 #endif
 #endif
 
+  esp_netif_init ();
+
   /* Enable Hardware MFi authentication (applicable only for MFi variant of SDK) */
   hap_enable_mfi_auth(HAP_MFI_AUTH_HW);
 
@@ -210,6 +212,8 @@ static void smart_outlet_thread_entry(void* p)
   hap_start();
   /* Start Wi-Fi */
   app_wifi_start(portMAX_DELAY);
+
+  outlet_init();
 
   uint32_t io_num = OUTLET_IN_USE_GPIO;
   hap_val_t appliance_value = {
@@ -236,7 +240,6 @@ static void smart_outlet_thread_entry(void* p)
 
 void app_main()
 {
-  outlet_init();
   /* Create the application thread */
   xTaskCreate(smart_outlet_thread_entry, SMART_OUTLET_TASK_NAME, SMART_OUTLET_TASK_STACKSIZE,
     NULL, SMART_OUTLET_TASK_PRIORITY, NULL);
