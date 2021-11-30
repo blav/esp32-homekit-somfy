@@ -16,11 +16,6 @@ typedef enum {
   BUTTON_PROG = 8
 } somfy_button_t;
 
-typedef struct {
-  somfy_remote_t remote;
-  somfy_button_t button;
-} somfy_command_t;
-
 typedef struct  {
   char *remote_name;
   somfy_remote_t remote;
@@ -36,9 +31,13 @@ typedef void * somfy_config_blob_handle_t;
 
 esp_err_t somfy_config_new(somfy_config_handle_t * handle);
 
+esp_err_t somfy_config_new_from_nvs (somfy_config_handle_t * handle);
+
 esp_err_t somfy_config_free(somfy_config_handle_t handle);
 
 esp_err_t somfy_config_remote_new(const char * remote_name, somfy_remote_t remote, somfy_rolling_code_t code, somfy_config_remote_handle_t * handle);
+
+esp_err_t somfy_config_remote_get(somfy_config_remote_handle_t handle, char ** remote_name, somfy_remote_t * remote, somfy_rolling_code_t * code);
 
 esp_err_t somfy_config_remote_free (somfy_config_remote_handle_t handle);
 
@@ -51,5 +50,9 @@ esp_err_t somfy_config_serialize (somfy_config_handle_t cfg, somfy_config_blob_h
 esp_err_t somfy_config_deserialize (somfy_config_blob_handle_t blob, somfy_config_handle_t * cfg);
 
 esp_err_t somfy_config_blob_free (somfy_config_blob_handle_t blob);
+
+typedef void (*somfy_config_remote_cb_t)(somfy_config_remote_handle_t, void *);
+
+void somfy_config_remote_for_each (somfy_config_handle_t handle, somfy_config_remote_cb_t callback, void * data);
 
 #endif//__somfy_config_h

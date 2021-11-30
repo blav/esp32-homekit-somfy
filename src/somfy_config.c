@@ -9,6 +9,8 @@
 #include "somfy_config_blob.h"
 #include "mutex.h"
 
+static const char * TAG = "somfy_config";
+
 typedef struct {
   list_t * remotes;
   SemaphoreHandle_t remotes_mutex;
@@ -25,6 +27,27 @@ esp_err_t somfy_config_new(somfy_config_handle_t * handle) {
     cfg->remotes_mutex = xSemaphoreCreateMutex();
     *handle = cfg;
     return ESP_OK;
+}
+
+esp_err_t somfy_config_new_from_nvs (somfy_config_handle_t * handle) {
+  somfy_config_blob_handle_t blob;
+  if (somfy_config_blob_nvs_read(&blob) == ESP_OK) {
+    ESP_LOGI(TAG, "Found somfy config.");
+    somfy_config_deserialize(blob, handle);
+  } else {
+    ESP_LOGI(TAG, "No somfy config found. Creating a new one.");
+    somfy_config_new(handle);
+    somfy_config_remote_handle_t remote1;
+    somfy_config_remote_new("Bureau", 0x100000, 128, &remote1);
+
+    somfy_config_add_remote (*handle, remote1);
+    somfy_config_serialize (*handle, &blob);
+    somfy_config_blob_nvs_write (blob);
+  }
+
+  somfy_config_blob_free (blob);
+  ESP_LOGI(TAG, "config sent");
+  return ESP_OK;
 }
 
 esp_err_t somfy_config_remote_new(const char * remote_name, somfy_remote_t remote, somfy_rolling_code_t code, somfy_config_remote_handle_t * handle) {
@@ -54,6 +77,20 @@ esp_err_t somfy_config_remote_free (somfy_config_remote_handle_t handle) {
         free(remote->remote_name);
 
     free(remote);
+    return ESP_OK;
+}
+
+esp_err_t somfy_config_remote_get(somfy_config_remote_handle_t handle, char ** remote_name, somfy_remote_t * remote, somfy_rolling_code_t * code) {
+    somfy_config_remote_t * cfg = (somfy_config_remote_t *) handle;
+    if (remote != NULL)
+        *remote = cfg->remote;
+
+    if (code != NULL)
+        *code = cfg->rolling_code;
+
+    if (remote_name != NULL)
+        *remote_name = strdup (cfg->remote_name);
+
     return ESP_OK;
 }
 
@@ -144,6 +181,15 @@ esp_err_t somfy_config_blob_free (somfy_config_blob_handle_t handle) {
     free(blob->blob);
     free(blob);
     return ESP_OK;
+}
+
+void somfy_config_remote_for_each (somfy_config_handle_t handle, somfy_config_remote_cb_t callback, void * data) {
+    somfy_config_t * cfg = (somfy_config_t *) handle;
+    MUTEX_TAKE(cfg->remotes_mutex);
+    for (list_node_t * node = list_begin(cfg->remotes); node != NULL; node = list_next(node)) 
+        (*callback) ((somfy_config_remote_handle_t) list_node(node), data);
+
+    MUTEX_GIVE(cfg->remotes_mutex);
 }
 
 esp_err_t somfy_config_increment_rolling_code (somfy_config_handle_t handle, somfy_remote_t remote, somfy_rolling_code_t * rolling_code) {
