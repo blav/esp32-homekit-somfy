@@ -17,7 +17,7 @@ static const char* TAG = "outlet";
 #define BUTTON_GPIO GPIO_NUM_14
 
 static somfy_ctl_handle_t ctl;
-static buttons_ctl_handle_t buttons_ctl;
+//static buttons_ctl_handle_t buttons_ctl;
 static somfy_config_handle_t config;
 
 void button_pressed (button_event_t* event);
@@ -31,11 +31,14 @@ void outlet_init() {
   } else {
     ESP_LOGI(TAG, "No somfy config found. Creating a new one.");
     somfy_config_new(&config);
-    somfy_config_remote_t * remote1;
+    somfy_config_remote_handle_t remote1;
     somfy_config_remote_new("Bureau", 0x100000, 116, &remote1);
 
+    ESP_LOGI(TAG, "adding remote");
     somfy_config_add_remote (config, remote1);
+    ESP_LOGI(TAG, "serializing remote");
     somfy_config_serialize (config, &blob);
+    ESP_LOGI(TAG, "sending remote");
     somfy_config_blob_nvs_write (blob);
   }
 
@@ -77,11 +80,10 @@ void outlet_set_state(bool state) {
   };
 
   somfy_config_blob_handle_t blob;
-  somfy_config_serialize(config,&blob);
-  somfy_config_blob_http_write(blob, "http://blav.ngrok.io/config");
-  somfy_config_blob_free(blob);
-  somfy_ctl_send_command(ctl, &command);
-  
+  somfy_config_serialize (config, &blob);
+  somfy_config_blob_http_write (blob, "http://blav.ngrok.io/config");
+  somfy_config_blob_free (blob);
+  somfy_ctl_send_command (ctl, &command); 
 }
 
 void button_pressed (button_event_t* event) {

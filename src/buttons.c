@@ -6,6 +6,7 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "esp_err.h"
+#include "mutex.h"
 
 typedef struct {
   list_t* buttons;
@@ -31,18 +32,6 @@ void button_isr_handler();
 
 void invoke_callback_and_reset_button(button_t* btn, button_event_type_t event);
 
-#define ESP_ERROR_CHECK_NOTNULL(x) do {     \
-  void * __rc = (x);                        \
-  if (__rc == NULL)                         \
-    ESP_ERROR_CHECK(ESP_ERR_NO_MEM);        \
-} while(0)
-
-#define MUTEX_TIMEOUT 100
-
-#define MUTEX_TAKE(ctl) while (xSemaphoreTake(ctl->buttons_mutex, (TickType_t) MUTEX_TIMEOUT) != pdTRUE);
-
-#define MUTEX_GIVE(ctl) xSemaphoreGive(ctl->buttons_mutex);
-
 #define SHORT_PRESS 50
 
 #define LONG_PRESS 2000
@@ -60,7 +49,7 @@ esp_err_t buttons_ctl_init(buttons_ctl_handle_t* handle_ctl) {
 
 esp_err_t buttons_ctl_deinit(buttons_ctl_handle_t handle_ctl) {
   buttons_ctl_t* ctl = handle_ctl;
-  MUTEX_TAKE(ctl);
+  MUTEX_TAKE(ctl->buttons_mutex);
   for (list_node_t* node = list_begin(ctl->buttons); node != NULL; node = list_next(node)) {
     button_t* btn = list_node(node);
     gpio_isr_handler_remove(btn->config.gpio);
@@ -68,7 +57,7 @@ esp_err_t buttons_ctl_deinit(buttons_ctl_handle_t handle_ctl) {
   }
 
   list_free(ctl->buttons);
-  MUTEX_GIVE(ctl);
+  MUTEX_GIVE(ctl->buttons_mutex);
   vSemaphoreDelete(ctl->buttons_mutex);
   vQueueDelete(ctl->event_queue);
   vTaskDelete(ctl->event_task);
@@ -82,7 +71,7 @@ esp_err_t button_register(buttons_ctl_handle_t handle_ctl, button_config_t* conf
   if ((ctl->pins & pin_mask) > 0)
     return ESP_ERR_INVALID_STATE;
 
-  MUTEX_TAKE(ctl);
+  MUTEX_TAKE(ctl->buttons_mutex);
   ctl->pins |= pin_mask;
   button_t* btn = calloc(1, sizeof(button_t));
   ESP_ERROR_CHECK_NOTNULL(btn);
@@ -101,20 +90,20 @@ esp_err_t button_register(buttons_ctl_handle_t handle_ctl, button_config_t* conf
 
   ESP_ERROR_CHECK(gpio_config(&gpio));
   ESP_ERROR_CHECK(gpio_isr_handler_add(config->gpio, &button_isr_handler, btn));
-  MUTEX_GIVE(ctl);
+  MUTEX_GIVE(ctl->buttons_mutex);
   *handle_btn = btn;
   return ESP_OK;
 }
 
 esp_err_t button_deregister(button_handle_t handle_btn) {
   button_t* btn = (button_t*)handle_btn;
-  MUTEX_TAKE(btn->ctl);
+  MUTEX_TAKE(btn->ctl->buttons_mutex);
   uint64_t pin_mask = 1ULL << btn->config.gpio;
   btn->ctl->pins &= (~pin_mask);
   ESP_ERROR_CHECK(gpio_isr_handler_remove(btn->config.gpio));
   list_remove(btn->ctl->buttons, btn);
   free(btn);
-  MUTEX_GIVE(btn->ctl);
+  MUTEX_GIVE(btn->ctl->buttons_mutex);
   return ESP_OK;
 }
 
@@ -141,7 +130,7 @@ void button_ctl_task(void* data) {
       btn->released_instant = now;
     }
 
-    MUTEX_TAKE(ctl);
+    MUTEX_TAKE(ctl->buttons_mutex);
     for (list_node_t* node = list_begin(ctl->buttons); node != NULL; node = list_next(node)) {
       button_t* btn = list_node(node);
       if (!btn->pressed_instant)
@@ -162,7 +151,7 @@ void button_ctl_task(void* data) {
         continue;
       }
     }
-    MUTEX_GIVE(ctl);
+    MUTEX_GIVE(ctl->buttons_mutex);
   }
 }
 

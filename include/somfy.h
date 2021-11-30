@@ -6,6 +6,8 @@
 #include "pulse.h"
 
 #include "somfy_config.h"
+#include "somfy_config_nvs.h"
+#include "somfy_config_http.h"
 
 typedef void * somfy_ctl_handle_t;
 

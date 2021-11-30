@@ -238,6 +238,10 @@ static void smart_outlet_thread_entry(void* p)
   }
 }
 
+void alloc_failed_hook (size_t size, uint32_t caps, const char *function_name) {
+  ESP_LOGE(TAG, "alloc failed %d bytes et %s", size, function_name);
+}
+
 void app_main()
 {
   /* Create the application thread */

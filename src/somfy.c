@@ -4,7 +4,7 @@
 #include "nvs.h"
 #include "pulse.h"
 
-const char* TAG = "somfy";
+static const char* TAG = "somfy";
 
 typedef struct {
   uint8_t frame[7];
