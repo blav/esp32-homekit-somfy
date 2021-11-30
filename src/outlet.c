@@ -32,17 +32,12 @@ void outlet_init() {
     ESP_LOGI(TAG, "No somfy config found. Creating a new one.");
     somfy_config_new(&config);
     somfy_config_remote_handle_t remote1;
-    somfy_config_remote_new("Bureau", 0x100000, 116, &remote1);
+    somfy_config_remote_new("Bureau", 0x100000, 126, &remote1);
 
-    ESP_LOGI(TAG, "adding remote");
     somfy_config_add_remote (config, remote1);
-    ESP_LOGI(TAG, "serializing remote");
     somfy_config_serialize (config, &blob);
-    ESP_LOGI(TAG, "sending remote");
     somfy_config_blob_nvs_write (blob);
   }
-
-  ESP_LOGI(TAG, "config %x loaded", (unsigned int) config);
 
   somfy_config_blob_http_write (blob, "http://blav.ngrok.io/config");
   somfy_config_blob_free (blob);

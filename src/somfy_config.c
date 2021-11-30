@@ -23,11 +23,8 @@ void somfy_config_remote_free_cb (void * data) {
 
 esp_err_t somfy_config_new(somfy_config_handle_t * handle) {
     somfy_config_t * cfg = calloc(1, sizeof(somfy_config_t));
-    ESP_LOGI(TAG, "somfy_config_new 1");
     cfg->remotes = list_new(&somfy_config_remote_free_cb);
-    ESP_LOGI(TAG, "somfy_config_new 2");
     cfg->remotes_mutex = xSemaphoreCreateMutex();
-    ESP_LOGI(TAG, "somfy_config_new 3 %lx", (unsigned long) cfg->remotes_mutex);
     *handle = cfg;
     return ESP_OK;
 }
@@ -64,13 +61,9 @@ esp_err_t somfy_config_remote_free (somfy_config_remote_handle_t handle) {
 
 esp_err_t somfy_config_add_remote(somfy_config_handle_t handle, somfy_config_remote_handle_t config) {
     somfy_config_t * cfg = (somfy_config_t *) handle;
-    ESP_LOGI(TAG, "somfy_config_add_remote 1");
     MUTEX_TAKE(cfg->remotes_mutex);
-    ESP_LOGI(TAG, "somfy_config_add_remote 2");
     list_append(cfg->remotes, config);
-    ESP_LOGI(TAG, "somfy_config_add_remote 3");
     MUTEX_GIVE(cfg->remotes_mutex);
-    ESP_LOGI(TAG, "somfy_config_add_remote 4");
     return ESP_OK;
 }
 
@@ -124,29 +117,23 @@ esp_err_t somfy_config_deserialize (somfy_config_blob_handle_t handle, somfy_con
     offset += sizeof(uint8_t);
     for (int i = 0; i < remote_count; i ++) {
         somfy_config_remote_handle_t remote_handle;
-        ESP_LOGI(TAG, "somfy_config_deserialize 1");
 
         somfy_config_remote_new (NULL, 0, 0, &remote_handle);
         somfy_config_remote_t * remote = (somfy_config_remote_t *) remote_handle;
-        ESP_LOGI(TAG, "somfy_config_deserialize 2");
 
         memcpy(&remote->remote, blob->blob + offset, sizeof(somfy_remote_t));
         offset += sizeof(somfy_remote_t);
-        ESP_LOGI(TAG, "somfy_config_deserialize 3");
 
         memcpy(&remote->rolling_code, blob->blob + offset, sizeof(somfy_rolling_code_t));
         offset += sizeof(somfy_rolling_code_t);
-        ESP_LOGI(TAG, "somfy_config_deserialize 4");
 
         uint8_t name_len;
         memcpy(&name_len, blob->blob + offset, sizeof(uint8_t));
         offset += sizeof(uint8_t);
-        ESP_LOGI(TAG, "somfy_config_deserialize 5");
 
         remote->remote_name = calloc(name_len + 1, sizeof(char));
         memcpy(remote->remote_name, blob->blob + offset, name_len);
         offset += name_len;
-        ESP_LOGI(TAG, "somfy_config_deserialize 6");
 
         somfy_config_add_remote(*cfg, remote_handle);
     }
@@ -173,12 +160,10 @@ esp_err_t somfy_config_increment_rolling_code (somfy_config_handle_t handle, som
         }
     }
 
-    ESP_LOGI(TAG, "found node %x", (unsigned int) found);
     if (found == NULL)
         return ESP_ERR_NOT_FOUND;
 
     found->rolling_code = found->rolling_code + 1;
-    ESP_LOGI(TAG, "increment rolling code  %d", found->rolling_code);
     if (rolling_code != NULL)
         *rolling_code = found->rolling_code;
 
