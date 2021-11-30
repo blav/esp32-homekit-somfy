@@ -9,8 +9,6 @@
 #include "somfy_config_blob.h"
 #include "mutex.h"
 
-static const char * TAG = "somfy_config";
-
 typedef struct {
   list_t * remotes;
   SemaphoreHandle_t remotes_mutex;

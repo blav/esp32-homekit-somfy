@@ -63,8 +63,6 @@ esp_err_t somfy_ctl_send_command (somfy_ctl_handle_t handle, somfy_command_t* co
 
 void somfy_frame_init(somfy_frame_t* frame, somfy_ctl_handle_t ctl, somfy_command_t* command) {
   somfy_rolling_code_t rolling_code;
-  //somfy_remote_rolling_code_get_and_inc(command->remote, &rolling_code);
-
   somfy_ctl_increment_rolling_code_and_write_nvs(ctl, command->remote, &rolling_code);
 
   frame->ctl = ctl;
@@ -132,30 +130,6 @@ void somfy_frame_debug(somfy_frame_t * frame, somfy_command_t * command, somfy_r
     command->button,
     code);
 }
-
-void somfy_remote_rolling_code_get_and_inc (somfy_remote_t remote, somfy_rolling_code_t * code) {
-  char remote_key[20];
-  sprintf(remote_key, "remote-%06x", remote & 0xffffff);
-  nvs_handle_t handle;
-  ESP_ERROR_CHECK (nvs_open("somfy", NVS_READWRITE, &handle));
-  esp_err_t read = nvs_get_u16(handle, remote_key, code);
-  if (read == ESP_ERR_NVS_NOT_FOUND) {
-    *code = 0;
-  } else if (read != ESP_OK) {
-    ESP_LOGE(TAG, "%s", esp_err_to_name(read));
-    abort();
-  }
-
-  ESP_LOGI(TAG, "increment rolling code %s %d", remote_key, *code);
-
-//  if (*code < 106)
-//    *code = 106;
-
-  ESP_ERROR_CHECK (nvs_set_u16(handle, remote_key, (*code) + 1));
-  nvs_close(handle);
-  ESP_LOGI(TAG, "Wrote rolling code %d for remote %s.", *code, remote_key);
-}
-
 
 esp_err_t somfy_ctl_increment_rolling_code_and_write_nvs (somfy_ctl_handle_t handle, somfy_remote_t remote, somfy_rolling_code_t * rolling_code) {
     somfy_ctl_t * ctl = (somfy_ctl_t *) handle;
