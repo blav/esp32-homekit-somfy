@@ -1,8 +1,11 @@
 #include <nvs_flash.h>
+#include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "somfy.h"
-#include "somfy_homekit.h"
+#include "homekit_rollers.h"
+
+static const char * TAG = "main";
 
 static void homekit_bridge_task (void * data) {
     nvs_flash_init();
@@ -16,10 +19,11 @@ static void homekit_bridge_task (void * data) {
         .max_queue_size = 3
     };
 
-    somfy_homekit_start (config);
-
     somfy_ctl_handle_t ctl;
     somfy_ctl_init (config, &pulse_cfg, &ctl); 
+
+    homekit_rollers_handle_t rollers;
+    homekit_rollers_start (ctl, &rollers);
 
     somfy_config_blob_handle_t blob;
     somfy_config_serialize(config, &blob);

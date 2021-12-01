@@ -17,7 +17,7 @@ void somfy_frame_write(somfy_frame_t* frame, pulse_train_handle_t train, somfy_s
 
 void somfy_frame_debug(somfy_frame_t* frame, somfy_command_t * command, somfy_rolling_code_t code);
 
-esp_err_t somfy_ctl_send_command (somfy_ctl_handle_t handle, somfy_command_t* command) {
+esp_err_t somfy_ctl_send_frames (somfy_ctl_handle_t handle, somfy_command_t* command) {
   somfy_ctl_t * c = (somfy_ctl_t *) handle;
   pulse_ctl_handle_t ctl = c->pulse_ctl;
   pulse_train_handle_t train;

@@ -1,7 +1,8 @@
-#include "freertos/FreeRTOS.h"
+#include <freertos/FreeRTOS.h>
+#include <nvs.h>
+#include <string.h>
 #include "somfy.h"
 #include "somfy_ctl.h"
-#include "nvs.h"
 #include "pulse.h"
 
 esp_err_t somfy_ctl_init (somfy_config_handle_t ctl_cfg, pulse_ctl_config_t * pulse_cfg, somfy_ctl_handle_t * handle) {
@@ -9,7 +10,6 @@ esp_err_t somfy_ctl_init (somfy_config_handle_t ctl_cfg, pulse_ctl_config_t * pu
   ctl->pulse_ctl = pulse_ctl_new (pulse_cfg);
   ctl->config = ctl_cfg;
   *handle = ctl;
-  
   return ESP_OK;
 }
 
@@ -31,3 +31,24 @@ esp_err_t somfy_ctl_increment_rolling_code_and_write_nvs (somfy_ctl_handle_t han
     somfy_config_blob_free(blob);
     return ESP_OK;
 }
+
+esp_err_t somfy_ctl_get (somfy_ctl_handle_t handle, somfy_config_handle_t * config) {
+    somfy_ctl_t * ctl = (somfy_ctl_t *) handle;
+    if (config != NULL)
+      *config = ctl->config;
+
+    return ESP_OK;
+}
+
+esp_err_t somfy_ctl_send_command(somfy_ctl_handle_t ctl, somfy_remote_t remote, somfy_button_t button) {
+  somfy_rolling_code_t rolling_code;
+  somfy_ctl_increment_rolling_code_and_write_nvs (ctl, remote, &rolling_code);
+  somfy_command_t command = {
+    .button = button,
+    .remote = remote,
+    .rolling_code = rolling_code,
+  };
+
+  return somfy_ctl_send_frames (ctl, &command);
+}
+

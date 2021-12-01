@@ -8,6 +8,8 @@ typedef struct {
   somfy_config_handle_t config;
 } somfy_ctl_t;
 
+esp_err_t somfy_ctl_send_frames (somfy_ctl_handle_t handle, somfy_command_t* command);
+
 esp_err_t somfy_ctl_increment_rolling_code_and_write_nvs (somfy_ctl_handle_t cfg, somfy_remote_t remote, somfy_rolling_code_t * rolling_code);
 
 

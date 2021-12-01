@@ -23,7 +23,8 @@ esp_err_t somfy_ctl_init (somfy_config_handle_t config, pulse_ctl_config_t * pul
 
 esp_err_t somfy_ctl_free (somfy_ctl_handle_t ctl);
 
-esp_err_t somfy_ctl_send_command(somfy_ctl_handle_t ctl, somfy_command_t *command);
+esp_err_t somfy_ctl_send_command(somfy_ctl_handle_t ctl, somfy_remote_t remote, somfy_button_t button);
 
+esp_err_t somfy_ctl_get (somfy_ctl_handle_t ctl, somfy_config_handle_t * config);
 
 #endif //__somfy_h
