@@ -15,12 +15,6 @@ typedef enum  {
 
 esp_err_t homekit_rollers_start (somfy_ctl_handle_t ctl, homekit_rollers_handle_t * handle);
 
-esp_err_t homekit_rollers_set (
-    homekit_rollers_handle_t roller, 
-    somfy_remote_t remote, 
-    int * current_position, 
-    roller_position_state_t * position_state);
-
 esp_err_t homekit_roller_set (
     homekit_roller_handle_t roller, 
     int * current_position, 

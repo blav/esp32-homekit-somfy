@@ -38,7 +38,7 @@ esp_err_t somfy_config_new_from_nvs (somfy_config_handle_t * handle) {
     ESP_LOGI(TAG, "No somfy config found. Creating a new one.");
     somfy_config_new(handle);
     somfy_config_remote_handle_t remote1;
-    somfy_config_remote_new("Bureau", 0x100000, 128, &remote1);
+    somfy_config_remote_new("Volet bureau", 0x100000, 188, &remote1);
 
     somfy_config_add_remote (*handle, remote1);
     somfy_config_serialize (*handle, &blob);

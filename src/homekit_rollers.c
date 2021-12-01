@@ -46,14 +46,6 @@ esp_err_t homekit_rollers_init (somfy_ctl_handle_t ctl, homekit_rollers_handle_t
     return ESP_OK;
 }
 
-esp_err_t homkit_rollers_get (homekit_rollers_handle_t handle, somfy_ctl_handle_t * ctl) {
-    homekit_rollers_t * rollers = (homekit_rollers_t *) handle;
-    if (ctl != NULL)
-        *ctl = rollers->ctl;
-
-    return ESP_OK;
-}
-
 void update_roller (void * data);
 
 esp_err_t homekit_rollers_add (homekit_rollers_handle_t rollers_handle, somfy_remote_t remote, hap_serv_t * service, homekit_roller_handle_t * handle) {
@@ -76,20 +68,6 @@ esp_err_t homekit_rollers_add (homekit_rollers_handle_t rollers_handle, somfy_re
     homekit_rollers_t * rollers = (homekit_rollers_t *) rollers_handle;
     list_append (rollers->rollers, roller);
     return ESP_OK;
-}
-
-esp_err_t homekit_rollers_lookup (homekit_rollers_handle_t handle, somfy_remote_t remote, hap_serv_t ** service) {
-    homekit_rollers_t * rollers = (homekit_rollers_t *) handle;
-    for (list_node_t * node = list_begin (rollers->rollers); node != NULL; node = list_next (node)) {
-        homekit_roller_t * roller = list_node (node);
-        if (roller->remote == remote) {
-            *service = roller->service;
-            return ESP_OK;
-        }
-    }
-
-    *service = NULL;
-    return ESP_ERR_NOT_FOUND;
 }
 
 /* Reset network credentials if button is pressed for more than 3 seconds and then released */
@@ -148,8 +126,6 @@ static int roller_write (
     void *write_priv
 ) {
     homekit_roller_t * priv = serv_priv;
-    ESP_LOGI(TAG, "write called for remote 0x%08x", priv->remote);
-
     somfy_ctl_get(priv->rollers->ctl, NULL);
     int i, ret = HAP_SUCCESS;
     hap_write_data_t *write;
@@ -182,24 +158,19 @@ static int roller_read (
         ESP_LOGI(TAG, "Received read from %s", hap_req_get_ctrl_id(read_priv));
     
     const char * char_uuid = hap_char_get_type_uuid(hc);
-    ESP_LOGI(TAG, "reading characteristic %s", char_uuid);
 
     homekit_roller_t * priv = serv_priv;
-    ESP_LOGI(TAG, "read called for remote 0x%08x", priv->remote);
-
     if (!strcmp(char_uuid, HAP_CHAR_UUID_CURRENT_POSITION)) {
         hap_val_t new_val = {
             .i = priv->current_position
         };
         hap_char_update_val(hc, &new_val);
-        ESP_LOGI(TAG, "reading remote 0x%08x current_position is %d", priv->remote, priv->current_position);
         *read_status = HAP_STATUS_SUCCESS;
     } else if (!strcmp(char_uuid, HAP_CHAR_UUID_POSITION_STATE)) {
         hap_val_t new_val = {
             .i = priv->position_state
         };
         hap_char_update_val(hc, &new_val);
-        ESP_LOGI(TAG, "reading remote 0x%08x position_state is %d", priv->remote, priv->position_state);
         *read_status = HAP_STATUS_SUCCESS;
     } else if (!strcmp(char_uuid, HAP_CHAR_UUID_TARGET_POSITION)) {
         hap_val_t new_val = {
@@ -207,7 +178,6 @@ static int roller_read (
         };
 
         hap_char_update_val(hc, &new_val);
-        ESP_LOGI(TAG, "reading remote 0x%08x target_position is %d", priv->remote, priv->target_position);
         *read_status = HAP_STATUS_SUCCESS;
     } else {
         *read_status = HAP_STATUS_RES_ABSENT;
@@ -224,9 +194,9 @@ void create_roller_accessory (somfy_config_remote_handle_t remote, void * data) 
 
     hap_acc_cfg_t bridge_cfg = {
         .name = accessory_name,
-        .manufacturer = "Espressif",
-        .model = "EspFan01",
-        .serial_num = "abcdefg",
+        .manufacturer = "Somfy",
+        .model = "Somfy Roller",
+        .serial_num = "000000001",
         .fw_rev = "0.9.0",
         .hw_rev = NULL,
         .pv = "1.1.0",
@@ -254,10 +224,10 @@ esp_err_t homekit_rollers_start (somfy_ctl_handle_t ctl, homekit_rollers_handle_
 
     homekit_rollers_init(ctl, handle);
     hap_acc_cfg_t cfg = {
-        .name = "Esp-Bridge",
-        .manufacturer = "Espressif",
-        .model = "EspBridge01",
-        .serial_num = "001122334455",
+        .name = "Somfy",
+        .manufacturer = "Somfy",
+        .model = "Somfy HAP Bridge",
+        .serial_num = "000000001",
         .fw_rev = "0.9.0",
         .hw_rev = NULL,
         .pv = "1.1.0",
@@ -267,7 +237,7 @@ esp_err_t homekit_rollers_start (somfy_ctl_handle_t ctl, homekit_rollers_handle_
 
     hap_acc_t * accessory = hap_acc_create(&cfg);
 
-    uint8_t product_data[] = {'E','S','P','3','2','H','A','P'};
+    uint8_t product_data[] = { 'S','o','m','f','y','H','A','P' };
     hap_acc_add_product_data(accessory, product_data, sizeof(product_data));
     hap_add_accessory(accessory);
     somfy_config_handle_t config;
@@ -294,17 +264,6 @@ esp_err_t homekit_rollers_start (somfy_ctl_handle_t ctl, homekit_rollers_handle_
     return ESP_OK;
 }
 
-esp_err_t homekit_rollers_set (
-    homekit_rollers_handle_t rollers, 
-    somfy_remote_t remote, 
-    int * current_position, 
-    roller_position_state_t * position_state
-) {
-    hap_acc_t * accessory;
-    homekit_rollers_lookup (rollers, remote, &accessory);
-    return ESP_OK;
-}
-
 esp_err_t homekit_roller_set (
     homekit_roller_handle_t handle, 
     int * current_position, 
@@ -318,7 +277,6 @@ esp_err_t homekit_roller_set (
             .i = *current_position
         };
 
-        ESP_LOGI(TAG, "updating roller 0x%08x current_position is %d", roller->remote, *current_position);
         hap_char_update_val(hap_char, &val);
     }
 
@@ -328,7 +286,6 @@ esp_err_t homekit_roller_set (
             .i = *position_state
         };
 
-        ESP_LOGI(TAG, "updating roller 0x%08x position_state is %d", roller->remote, *position_state);
         hap_char_update_val(hap_char, &val);
     }
 
@@ -338,7 +295,6 @@ esp_err_t homekit_roller_set (
             .i = *target_position
         };
 
-        ESP_LOGI(TAG, "updating roller 0x%08x target_position is %d", roller->remote, *target_position);
         hap_char_update_val(hap_char, &val);
     }
 
@@ -367,16 +323,12 @@ void update_roller (void * data) {
             ROLLER_POSITION_STATE_INCREASING : 
             ROLLER_POSITION_STATE_DECREASING;
 
-        ESP_LOGI(TAG, "updating roller target_position = %d, current_position = %d (delta = %d)", 
-            roller->target_position, roller->current_position, delta);
-
         homekit_roller_set(roller, NULL, NULL, &roller->position_state);
 
         somfy_ctl_send_command (roller->rollers->ctl, roller->remote, 
             delta > 0 ? BUTTON_UP : BUTTON_DOWN);
 
         TickType_t delay = 23000 * abs(delta) / 100 / portTICK_PERIOD_MS;
-        ESP_LOGI (TAG, "waiting for %d ticks", delay);
         vTaskDelay (delay);
 
         if (roller->target_position != 0 && roller->target_position != 100)
@@ -387,7 +339,7 @@ void update_roller (void * data) {
         homekit_roller_set(roller, &roller->current_position, NULL, &roller->position_state);
         roller_nvs_save (roller);
 
-        ESP_LOGI(TAG, "current_position %d updated with target_position %d", 
+        ESP_LOGI(TAG, "roller current_position %d updated to target_position %d", 
             roller->current_position, 
             roller->target_position);
     }
@@ -400,7 +352,7 @@ esp_err_t roller_nvs_save (homekit_roller_handle_t handle) {
     sprintf (key, "current_position_%06x", roller->remote);
 
     ESP_ERROR_CHECK (nvs_open("somfy-hap", NVS_READWRITE, &nvs));
-    nvs_set_i32 (nvs, key, roller->current_position);
+    nvs_set_i32 (nvs, key, (int32_t) roller->current_position);
     nvs_close(nvs);
     ESP_LOGI(TAG, "remote 0x%06x saved current_position at %d", roller->remote, roller->current_position);
     return ESP_OK;
@@ -414,7 +366,8 @@ esp_err_t roller_nvs_load (homekit_roller_handle_t handle) {
     char key [30];
     sprintf (key, "current_position_%06x", roller->remote);
 
-    esp_err_t read = nvs_get_i32 (nvs, key, &roller->current_position);
+    int32_t current_position;
+    esp_err_t read = nvs_get_i32 (nvs, key, &current_position);
     if (read == ESP_ERR_NVS_NOT_FOUND) {
         ESP_LOGW(TAG, "nvs entry %s not found %s", key, esp_err_to_name(read));
         return ESP_OK;
@@ -424,7 +377,8 @@ esp_err_t roller_nvs_load (homekit_roller_handle_t handle) {
     }
 
     ESP_LOGI(TAG, "remote 0x%06x restored at current_position %d", roller->remote, roller->current_position);
-    roller->target_position = roller->current_position;
+    roller->current_position = current_position;
+    roller->target_position = current_position;
     nvs_close (nvs);
     return ESP_OK;
 }
