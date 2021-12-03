@@ -15,12 +15,20 @@
 #include "homekit_rollers.h"
 #include "somfy.h"
 #include "pulse.h"
+#include "led_ctl.h"
 
 static const char *TAG = "somfy_homekit";
+
+typedef enum {
+    ROLLERS_MODE_CMD,
+    ROLLERS_MODE_PROG,
+} homekit_rollers_mode_t;
 
 typedef struct {
     list_t * rollers;
     somfy_ctl_handle_t ctl;
+    led_ctl_handle_t led;
+    homekit_rollers_mode_t mode;
 } homekit_rollers_t;
 
 typedef struct {
@@ -42,6 +50,8 @@ esp_err_t homekit_rollers_init (somfy_ctl_handle_t ctl, homekit_rollers_handle_t
     homekit_rollers_t * rollers = calloc(1, sizeof (homekit_rollers_t));
     rollers->ctl = ctl;
     rollers->rollers = list_new (free);
+    rollers->mode = ROLLERS_MODE_CMD;
+    led_ctl_init (GPIO_NUM_2, LED_MODE_SLEEP, &rollers->led);
     *handle = rollers;
     return ESP_OK;
 }
@@ -57,24 +67,27 @@ esp_err_t homekit_rollers_add (homekit_rollers_handle_t rollers_handle, somfy_re
     roller->target_position = 100;
     roller->position_state = ROLLER_POSITION_STATE_STOPPED;
     roller->command_queue = xQueueCreate(1, sizeof(int));
-
-    char task_name [18];
-    sprintf(task_name, "roller_cmd_%06x", remote);
-    xTaskCreate (&update_roller, task_name, 4096, roller, 1, &roller->command_task);
     roller_nvs_load (roller);
-    
-    *handle = roller;
 
     homekit_rollers_t * rollers = (homekit_rollers_t *) rollers_handle;
     list_append (rollers->rollers, roller);
+ 
+    char task_name [18];
+    sprintf(task_name, "roller_cmd_%06x", remote);
+    xTaskCreate (&update_roller, task_name, 4096, roller, 1, &roller->command_task);
+    
+    *handle = roller;
     return ESP_OK;
 }
 
 /* Reset network credentials if button is pressed for more than 3 seconds and then released */
-#define RESET_NETWORK_BUTTON_TIMEOUT        3
+#define PROG_MODE_BUTTON_TIMEOUT            2
+
+/* Reset network credentials if button is pressed for more than 3 seconds and then released */
+#define RESET_NETWORK_BUTTON_TIMEOUT        10
 
 /* Reset to factory if button is pressed and held for more than 10 seconds */
-#define RESET_TO_FACTORY_BUTTON_TIMEOUT     10
+#define RESET_TO_FACTORY_BUTTON_TIMEOUT     20
 
 /* The button "Boot" will be used as the Reset button for the example */
 #define RESET_GPIO  GPIO_NUM_0
@@ -83,14 +96,25 @@ esp_err_t homekit_rollers_add (homekit_rollers_handle_t rollers_handle, somfy_re
  * @brief The network reset button callback handler.
  * Useful for testing the Wi-Fi re-configuration feature of WAC2
  */
-static void reset_network_handler(void* arg) {
-    hap_reset_network();
-}
+//static void reset_network_handler(void* arg) {
+//    hap_reset_network();
+//}
 /**
  * @brief The factory reset button callback handler.
  */
-static void reset_to_factory_handler(void* arg) {
-    hap_reset_to_factory();
+//static void reset_to_factory_handler(void* arg) {
+//    hap_reset_to_factory();
+//}
+
+static void toggle_prog_mode_handler (void * arg) {
+    homekit_rollers_t * rollers = (homekit_rollers_t *) arg;
+    rollers->mode = rollers->mode == ROLLERS_MODE_PROG ? 
+        ROLLERS_MODE_CMD :
+        ROLLERS_MODE_PROG;
+
+    led_ctl_set_mode (rollers->led, rollers->mode == ROLLERS_MODE_PROG ?
+        LED_MODE_PROG_MODE :
+        LED_MODE_SLEEP);
 }
 
 /**
@@ -98,10 +122,11 @@ static void reset_to_factory_handler(void* arg) {
  * Same button will be used for resetting Wi-Fi network as well as for reset to factory based on
  * the time for which the button is pressed.
  */
-static void reset_key_init(uint32_t key_gpio_pin) {
+static void reset_key_init(homekit_rollers_handle_t rollers, uint32_t key_gpio_pin) {
     button_handle_t handle = iot_button_create(key_gpio_pin, BUTTON_ACTIVE_LOW);
-    iot_button_add_on_release_cb(handle, RESET_NETWORK_BUTTON_TIMEOUT, reset_network_handler, NULL);
-    iot_button_add_on_press_cb(handle, RESET_TO_FACTORY_BUTTON_TIMEOUT, reset_to_factory_handler, NULL);
+    iot_button_add_on_release_cb(handle, PROG_MODE_BUTTON_TIMEOUT, &toggle_prog_mode_handler, rollers);
+ //   iot_button_add_on_release_cb(handle, RESET_NETWORK_BUTTON_TIMEOUT, reset_network_handler, NULL);
+ //   iot_button_add_on_press_cb(handle, RESET_TO_FACTORY_BUTTON_TIMEOUT, reset_to_factory_handler, NULL);
 }
 
 static int bridge_identify(hap_acc_t *ha) {
@@ -243,7 +268,7 @@ esp_err_t homekit_rollers_start (somfy_ctl_handle_t ctl, homekit_rollers_handle_
     somfy_config_handle_t config;
     somfy_ctl_get (ctl, &config);
     somfy_config_remote_for_each (config, &create_roller_accessory, *handle);
-    reset_key_init(RESET_GPIO);
+    reset_key_init(*handle, RESET_GPIO);
 
 #ifdef CONFIG_EXAMPLE_USE_HARDCODED_SETUP_CODE
     hap_set_setup_code(CONFIG_EXAMPLE_SETUP_CODE);
@@ -348,7 +373,7 @@ void update_roller (void * data) {
 esp_err_t roller_nvs_save (homekit_roller_handle_t handle) {
     homekit_roller_t * roller = handle;
     nvs_handle_t nvs;
-    char key [30];
+    char key [40] = "";
     sprintf (key, "current_position_%06x", roller->remote);
 
     ESP_ERROR_CHECK (nvs_open("somfy-hap", NVS_READWRITE, &nvs));
@@ -359,11 +384,11 @@ esp_err_t roller_nvs_save (homekit_roller_handle_t handle) {
 }
 
 esp_err_t roller_nvs_load (homekit_roller_handle_t handle) {
-    homekit_roller_t * roller = handle;
+    homekit_roller_t * roller = (homekit_roller_t *) handle;
     nvs_handle_t nvs;
     ESP_ERROR_CHECK (nvs_open("somfy-hap", NVS_READWRITE, &nvs));
 
-    char key [30];
+    char key [40] = "";
     sprintf (key, "current_position_%06x", roller->remote);
 
     int32_t current_position;

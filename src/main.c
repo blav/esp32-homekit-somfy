@@ -8,8 +8,6 @@
 static const char * TAG = "main";
 
 static void homekit_bridge_task (void * data) {
-    nvs_flash_init();
-
     somfy_config_handle_t config;
     somfy_config_new_from_nvs (&config);
     pulse_ctl_config_t pulse_cfg = {
@@ -35,5 +33,6 @@ static void homekit_bridge_task (void * data) {
 }
 
 void app_main () {
+    nvs_flash_init();
     xTaskCreate(homekit_bridge_task, "somfy_hap_bridge", 4096, NULL, 1, NULL);
 }
