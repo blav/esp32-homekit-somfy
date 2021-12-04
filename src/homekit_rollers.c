@@ -106,15 +106,19 @@ esp_err_t homekit_rollers_add (homekit_rollers_handle_t rollers_handle, somfy_re
 //    hap_reset_to_factory();
 //}
 
-static void toggle_prog_mode_handler (void * arg) {
-    homekit_rollers_t * rollers = (homekit_rollers_t *) arg;
-    rollers->mode = rollers->mode == ROLLERS_MODE_PROG ? 
-        ROLLERS_MODE_CMD :
-        ROLLERS_MODE_PROG;
-
+static void homekit_rollers_set_mode (homekit_rollers_handle_t handler, homekit_rollers_mode_t mode) {
+    homekit_rollers_t * rollers = (homekit_rollers_t *) handler;
+    rollers->mode = mode;
     led_ctl_set_mode (rollers->led, rollers->mode == ROLLERS_MODE_PROG ?
         LED_MODE_PROG_MODE :
         LED_MODE_SLEEP);
+}
+
+static void toggle_prog_mode_handler (void * arg) {
+    homekit_rollers_t * rollers = (homekit_rollers_t *) arg;
+    homekit_rollers_set_mode (rollers, rollers->mode == ROLLERS_MODE_PROG ? 
+        ROLLERS_MODE_CMD :
+        ROLLERS_MODE_PROG);
 }
 
 /**
@@ -336,6 +340,19 @@ void update_roller (void * data) {
 
         roller->target_position = target_position;
         homekit_roller_set(roller, NULL, &target_position, NULL);
+
+        if (roller->rollers->mode == ROLLERS_MODE_PROG) {
+            if (target_position == 0 || target_position == 100) {
+                ESP_LOGI (TAG, "sending PROG command to 0x%06x", roller->remote);
+                somfy_ctl_send_command (roller->rollers->ctl, roller->remote, BUTTON_PROG);
+                homekit_rollers_set_mode (roller->rollers, ROLLERS_MODE_CMD);
+            }
+
+            roller->position_state = ROLLER_POSITION_STATE_STOPPED;
+            roller->current_position = target_position;
+            homekit_roller_set(roller, &roller->current_position, NULL, &roller->position_state);
+            continue;
+        }
 
         if (roller->target_position == roller->current_position) {
             roller->position_state = ROLLER_POSITION_STATE_STOPPED;

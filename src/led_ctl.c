@@ -1,6 +1,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
+
 #include "led_ctl.h"
 
 typedef struct {
@@ -10,7 +11,7 @@ typedef struct {
     QueueHandle_t queue;
 } led_ctl_t;
 
-void led_ctl_mode_decode (led_mode_t mode, int * down, int * up) {
+static void led_ctl_mode_decode (led_mode_t mode, int * down, int * up) {
     switch (mode) {
         case LED_MODE_ON:
             *up = 10000;
@@ -21,18 +22,18 @@ void led_ctl_mode_decode (led_mode_t mode, int * down, int * up) {
             *down = 10000;
             break;
         case LED_MODE_PROG_MODE:
-            *up = 50;
-            *down = 450;
+            *up = 20;
+            *down = 480;
             break;
         case LED_MODE_SLEEP:
         default:
             *up = 10;
-            *down = 1990;
+            *down = 4990;
             break;
     }
 }
 
-void led_ctl_task (void * data) {
+static void led_ctl_task (void * data) {
     int down;
     int up;
     led_ctl_t * ctl = (led_ctl_t *) data;
@@ -78,7 +79,7 @@ esp_err_t led_ctl_init (gpio_num_t gpio, led_mode_t mode, led_ctl_handle_t * han
 esp_err_t led_ctl_free (led_ctl_handle_t handle) {
     led_ctl_t * ctl = (led_ctl_t *) handle;
     vTaskDelete(ctl->task);
-    vQueueDelete(ctl->task);
+    vQueueDelete(ctl->queue);
     free(ctl);
     return ESP_OK;
 }

@@ -37,10 +37,25 @@ esp_err_t somfy_config_new_from_nvs (somfy_config_handle_t * handle) {
   } else {
     ESP_LOGI(TAG, "No somfy config found. Creating a new one.");
     somfy_config_new(handle);
-    somfy_config_remote_handle_t remote1;
-    somfy_config_remote_new("Volet bureau", 0x100000, 188, &remote1);
+    somfy_config_remote_handle_t remote;
+    somfy_config_remote_new("Bureau", 0x100000, 188, &remote);
+    somfy_config_add_remote (*handle, remote);
 
-    somfy_config_add_remote (*handle, remote1);
+    somfy_config_remote_new("Salon", 0x100001, 0, &remote);
+    somfy_config_add_remote (*handle, remote);
+
+    somfy_config_remote_new("Cuisine", 0x100002, 0, &remote);
+    somfy_config_add_remote (*handle, remote);
+
+    somfy_config_remote_new("Salle à manger", 0x100003, 0, &remote);
+    somfy_config_add_remote (*handle, remote);
+
+    somfy_config_remote_new("Cuisine sous-sol", 0x110001, 0, &remote);
+    somfy_config_add_remote (*handle, remote);
+
+    somfy_config_remote_new("Chambre sous-sol", 0x110002, 0, &remote);
+    somfy_config_add_remote (*handle, remote);
+
     somfy_config_serialize (*handle, &blob);
     somfy_config_blob_nvs_write (blob);
   }
