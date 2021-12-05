@@ -41,19 +41,19 @@ esp_err_t somfy_config_new_from_nvs (somfy_config_handle_t * handle) {
     somfy_config_remote_new("Bureau", 0x100000, 188, &remote);
     somfy_config_add_remote (*handle, remote);
 
-    somfy_config_remote_new("Salon", 0x100001, 0, &remote);
+    somfy_config_remote_new("Salon", 0x100001, 1, &remote);
     somfy_config_add_remote (*handle, remote);
 
-    somfy_config_remote_new("Cuisine", 0x100002, 0, &remote);
+    somfy_config_remote_new("Cuisine", 0x100002, 26, &remote);
     somfy_config_add_remote (*handle, remote);
 
-    somfy_config_remote_new("Salle à manger", 0x100003, 0, &remote);
+    somfy_config_remote_new("Salle à manger", 0x100003, 1, &remote);
     somfy_config_add_remote (*handle, remote);
 
-    somfy_config_remote_new("Cuisine sous-sol", 0x110001, 0, &remote);
+    somfy_config_remote_new("Cuisine sous-sol", 0x110001, 10, &remote);
     somfy_config_add_remote (*handle, remote);
 
-    somfy_config_remote_new("Chambre sous-sol", 0x110002, 0, &remote);
+    somfy_config_remote_new("Chambre sous-sol", 0x110002, 22, &remote);
     somfy_config_add_remote (*handle, remote);
 
     somfy_config_serialize (*handle, &blob);
