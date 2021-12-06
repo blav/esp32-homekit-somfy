@@ -51,7 +51,7 @@ esp_err_t somfy_config_deserialize (somfy_config_blob_handle_t blob, somfy_confi
 
 esp_err_t somfy_config_blob_free (somfy_config_blob_handle_t blob);
 
-typedef void (*somfy_config_remote_cb_t)(somfy_config_remote_handle_t, void *);
+typedef void (*somfy_config_remote_cb_t)(somfy_config_remote_handle_t, int index, void *);
 
 void somfy_config_remote_for_each (somfy_config_handle_t handle, somfy_config_remote_cb_t callback, void * data);
 

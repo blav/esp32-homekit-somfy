@@ -216,7 +216,7 @@ static int roller_read (
 }
 
 
-void create_roller_accessory (somfy_config_remote_handle_t remote, void * data) {
+void create_roller_accessory (somfy_config_remote_handle_t remote, int index, void * data) {
     char * accessory_name;
     somfy_remote_t remote_id;
     somfy_config_remote_get (remote, &accessory_name, &remote_id, NULL);
@@ -245,7 +245,7 @@ void create_roller_accessory (somfy_config_remote_handle_t remote, void * data) 
     hap_serv_set_write_cb(service, roller_write);
     hap_serv_set_read_cb (service, roller_read);
     hap_acc_add_serv(accessory, service);
-    hap_add_bridged_accessory(accessory, hap_get_unique_aid(accessory_name));
+    hap_add_bridged_accessory(accessory, remote_id);
 }
 
 esp_err_t homekit_rollers_start (somfy_ctl_handle_t ctl, homekit_rollers_handle_t * handle) {
@@ -391,10 +391,11 @@ esp_err_t roller_nvs_save (homekit_roller_handle_t handle) {
     homekit_roller_t * roller = handle;
     nvs_handle_t nvs;
     char key [40] = "";
-    sprintf (key, "current_position_%06x", roller->remote);
+    sprintf (key, "cur_pos_%06x", roller->remote);
 
     ESP_ERROR_CHECK (nvs_open("somfy-hap", NVS_READWRITE, &nvs));
-    nvs_set_i32 (nvs, key, (int32_t) roller->current_position);
+    ESP_ERROR_CHECK (nvs_set_i32 (nvs, key, (int32_t) roller->current_position));
+    ESP_ERROR_CHECK (nvs_commit (nvs));
     nvs_close(nvs);
     ESP_LOGI(TAG, "remote 0x%06x saved current_position at %d", roller->remote, roller->current_position);
     return ESP_OK;
@@ -406,7 +407,7 @@ esp_err_t roller_nvs_load (homekit_roller_handle_t handle) {
     ESP_ERROR_CHECK (nvs_open("somfy-hap", NVS_READWRITE, &nvs));
 
     char key [40] = "";
-    sprintf (key, "current_position_%06x", roller->remote);
+    sprintf (key, "cur_pos_%06x", roller->remote);
 
     int32_t current_position;
     esp_err_t read = nvs_get_i32 (nvs, key, &current_position);
@@ -418,9 +419,9 @@ esp_err_t roller_nvs_load (homekit_roller_handle_t handle) {
         abort ();
     }
 
-    ESP_LOGI(TAG, "remote 0x%06x restored at current_position %d", roller->remote, roller->current_position);
     roller->current_position = current_position;
     roller->target_position = current_position;
+    ESP_LOGI(TAG, "remote 0x%06x restored at current_position %d", roller->remote, roller->current_position);
     nvs_close (nvs);
     return ESP_OK;
 }

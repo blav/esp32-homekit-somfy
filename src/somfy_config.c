@@ -201,8 +201,9 @@ esp_err_t somfy_config_blob_free (somfy_config_blob_handle_t handle) {
 void somfy_config_remote_for_each (somfy_config_handle_t handle, somfy_config_remote_cb_t callback, void * data) {
     somfy_config_t * cfg = (somfy_config_t *) handle;
     MUTEX_TAKE(cfg->remotes_mutex);
+    int index = 0;
     for (list_node_t * node = list_begin(cfg->remotes); node != NULL; node = list_next(node)) 
-        (*callback) ((somfy_config_remote_handle_t) list_node(node), data);
+        (*callback) ((somfy_config_remote_handle_t) list_node(node), index ++, data);
 
     MUTEX_GIVE(cfg->remotes_mutex);
 }
